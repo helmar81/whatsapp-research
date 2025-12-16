@@ -30,7 +30,11 @@ export default defineConfig({
     }),
   ],
   server: {
-    port: 3000,
-    host: '0.0.0.0',
+    port: 3003,      // Matches your browser's current port
+    strictPort: true, // Prevents Vite from switching to another port if 3003 is busy
+    host: true,       // Exposes the project on the network
+    hmr: {
+      clientPort: 3003, // Fixes the "[vite] failed to connect to websocket" error
+    },
   },
 });
