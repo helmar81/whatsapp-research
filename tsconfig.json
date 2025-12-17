@@ -4,6 +4,7 @@
     "target": "ES2020",
     "module": "ESNext",
     "moduleResolution": "Node",
+    "noEmit": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "esModuleInterop": true,
@@ -14,6 +15,5 @@
   },
   "include": ["src"]
 }
-
  
 
