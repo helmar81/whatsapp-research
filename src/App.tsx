@@ -8,6 +8,9 @@ import HowToUse from './components/HowToUse';
 import { parseChatFile, parseChatText, analyzeChat } from './services/chatParser';
 import { type Message, type ChatAnalysis, ViewMode } from './types'; // Correct if types.ts is in src/
 
+import { useDarkMode } from "./hooks/useDarkMode";
+
+ const [isDark, setIsDark] = useDarkMode();
 // Demo data generator
 const generateDemoData = (): Message[] => {
   const text = `[12/05/2024, 09:15:00] Alice: Hey Bob, did you see the new project requirements?
@@ -196,6 +199,9 @@ const App: React.FC = () => {
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                     Note: This project is an independent tool and is not associated with WhatsApp or Meta in any way. All trademarks belong to their respective owners.
                   </p>
+
+
+                  <div className="bg-white dark:bg-black text-black dark:text-white">helllooooooooooooo</div>
                 </div>
               </div>
             </div>

@@ -78,6 +78,11 @@ const HowToUse: React.FC<HowToUseProps> = ({ onBack }) => {
           >
             Start Analyzing Now
           </button>
+
+
+          <div className="bg-red-500 text-white p-6 text-3xl">
+  Tailwind Works
+</div>
         </div>
       </div>
     </div>
