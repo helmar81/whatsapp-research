@@ -5,15 +5,37 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   plugins: [
     react(),
+
     VitePWA({
+      /* ----------------------------
+       * PWA registration
+       * ---------------------------- */
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
+
+      /* ----------------------------
+       * Assets to precache
+       * ---------------------------- */
+      includeAssets: [
+        'favicon.svg',
+        'icon-192.png',
+        'icon-512.png',
+      ],
+
+      /* ----------------------------
+       * Web App Manifest
+       * ---------------------------- */
       manifest: {
-        name: 'ChatLens - WhatsApp Research',
+        name: 'ChatLens – WhatsApp Research',
         short_name: 'ChatLens',
+        description: 'Private, offline-first WhatsApp chat analysis tool',
         start_url: '/',
+        scope: '/',
         display: 'standalone',
+        orientation: 'portrait-primary',
         background_color: '#0b141a',
         theme_color: '#25D366',
+
         icons: [
           {
             src: '/icon-192.png',
@@ -25,16 +47,42 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/png',
           },
+          {
+            src: '/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable',
+          },
         ],
+      },
+
+      /* ----------------------------
+       * Offline & caching strategy
+       * ---------------------------- */
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        navigateFallback: '/',
+        cleanupOutdatedCaches: true,
+      },
+
+      /* ----------------------------
+       * Dev options (important!)
+       * ---------------------------- */
+      devOptions: {
+        enabled: true, // allows PWA testing in dev
       },
     }),
   ],
+
+  /* ----------------------------
+   * Dev server (unchanged, verified)
+   * ---------------------------- */
   server: {
-    port: 3003,      // Matches your browser's current port
-    strictPort: true, // Prevents Vite from switching to another port if 3003 is busy
-    host: true,       // Exposes the project on the network
+    port: 3003,
+    strictPort: true,
+    host: true,
     hmr: {
-      clientPort: 3003, // Fixes the "[vite] failed to connect to websocket" error
+      clientPort: 3003,
     },
   },
 });

@@ -6,131 +6,110 @@ import Footer from './components/Footer';
 import Header from './components/Header';
 import HowToUse from './components/HowToUse';
 import { parseChatFile, parseChatText, analyzeChat } from './services/chatParser';
-import { type Message, type ChatAnalysis, ViewMode } from './types'; // Correct if types.ts is in src/
+import { type Message, type ChatAnalysis, ViewMode } from './types';
+import { useDarkMode } from './hooks/useDarkMode';
 
-
-
-
-// Demo data generator
+/* -------------------------
+ * Demo data generator
+ * ------------------------ */
 const generateDemoData = (): Message[] => {
   const text = `[12/05/2024, 09:15:00] Alice: Hey Bob, did you see the new project requirements?
 [12/05/2024, 09:16:20] Bob: Yes, I just read them. Looks like a lot of work for next week.
-[12/05/2024, 09:17:00] Alice: Totally. We need to start with the API design.
-[12/05/2024, 09:18:15] Charlie: I can handle the frontend components if you guys do the backend.
-[12/05/2024, 09:20:00] Bob: Sounds like a plan. @Alice, can you set up the repo?
-[12/05/2024, 10:00:00] Alice: Done. Sent the link.
-[12/05/2024, 10:05:00] Charlie: Thanks! I'll start the React setup.
-[12/05/2024, 14:30:00] Alice: Let's meet at 4 PM to sync?
-[12/05/2024, 14:31:00] Bob: Works for me.
-[13/05/2024, 09:00:00] System: Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.
-[13/05/2024, 09:05:00] Alice: Good morning team! How's progress?
-[13/05/2024, 09:10:00] Charlie: Almost done with the dashboard UI. It looks clean!
-[13/05/2024, 09:12:00] Bob: API endpoints are 50% done. I need to fix some database schemas.
-[13/05/2024, 09:15:00] Alice: Great. I'm working on the auth service. It's tricky with the new JWT requirements.
-[13/05/2024, 11:20:00] Bob: Anyone want to grab lunch?
-[13/05/2024, 11:21:00] Charlie: Sure, pizza place?
 [13/05/2024, 11:21:30] Alice: I'm in!`;
   return parseChatText(text);
 };
 
 const App: React.FC = () => {
+  const { isDark, toggle } = useDarkMode();
+
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.UPLOAD);
   const [messages, setMessages] = useState<Message[]>([]);
   const [analysis, setAnalysis] = useState<ChatAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  // Added progress state to give feedback during large file processing
+  const [progress, setProgress] = useState(0);
 
-  // Load theme and saved chat
+  /* -------------------------
+   * Load persisted chat
+   * ------------------------ */
   useEffect(() => {
-    // Theme init
-    const savedTheme = localStorage.getItem('chatlens_theme');
-    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      setTheme('dark');
-      document.documentElement.classList.add('dark');
-    } else {
-      setTheme('light');
-      document.documentElement.classList.remove('dark');
-    }
-
-    // Chat data init
     const savedData = localStorage.getItem('chatlens_messages');
-    if (savedData) {
-      try {
-        setLoading(true);
-        setTimeout(() => {
-          const parsedMsgs: Message[] = JSON.parse(savedData, (key, value) => {
-            if (key === 'date') return new Date(value);
-            return value;
-          });
-          
-          if (parsedMsgs.length > 0) {
-            const result = analyzeChat(parsedMsgs);
-            setMessages(parsedMsgs);
-            setAnalysis(result);
-            setViewMode(ViewMode.DASHBOARD);
-          }
-          setLoading(false);
-        }, 300);
-      } catch (err) {
-        console.error("Failed to load saved chat:", err);
-        localStorage.removeItem('chatlens_messages');
+    if (!savedData) return;
+
+    try {
+      setLoading(true);
+      setProgress(20);
+      setTimeout(() => {
+        const parsedMsgs: Message[] = JSON.parse(savedData, (k, v) =>
+          k === 'date' ? new Date(v) : v
+        );
+
+        if (parsedMsgs.length > 0) {
+          setMessages(parsedMsgs);
+          setAnalysis(analyzeChat(parsedMsgs));
+          setViewMode(ViewMode.DASHBOARD);
+        }
         setLoading(false);
-      }
+      }, 300);
+    } catch (err) {
+      console.error('Failed to load saved chat:', err);
+      localStorage.removeItem('chatlens_messages');
+      setLoading(false);
     }
   }, []);
 
-  const toggleTheme = () => {
-    if (theme === 'light') {
-      setTheme('dark');
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('chatlens_theme', 'dark');
-    } else {
-      setTheme('light');
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('chatlens_theme', 'light');
-    }
-  };
-
-  const processMessages = (msgs: Message[], persist: boolean = true) => {
+  /* -------------------------
+   * Helpers
+   * ------------------------ */
+  const processMessages = (msgs: Message[], persist = true) => {
     setLoading(true);
+    setProgress(10);
+
+    // Use setTimeout to allow the browser to update the UI before heavy processing starts
     setTimeout(() => {
-      const result = analyzeChat(msgs);
-      setMessages(msgs);
-      setAnalysis(result);
-      setViewMode(ViewMode.DASHBOARD);
-      
-      if (persist) {
-        try {
-          localStorage.setItem('chatlens_messages', JSON.stringify(msgs));
-        } catch (e) {
-          console.error("Failed to save to localStorage", e);
+      try {
+        setMessages(msgs);
+        setProgress(40);
+        
+        const result = analyzeChat(msgs);
+        setAnalysis(result);
+        setProgress(70);
+        
+        setViewMode(ViewMode.DASHBOARD);
+
+        if (persist) {
+          const serialized = JSON.stringify(msgs);
+          // Only save to localStorage if chat is under 4MB to prevent quota crashes
+          if (serialized.length < 4000000) {
+            localStorage.setItem('chatlens_messages', serialized);
+          } else {
+            console.warn("Chat too large to save in browser memory. It will work for this session only.");
+          }
         }
+        setProgress(100);
+      } catch (err) {
+        console.error("Processing error:", err);
+        alert("Something went wrong while analyzing the chat.");
       }
-      
       setLoading(false);
-    }, 800);
+    }, 100);
   };
 
   const handleFileUpload = async (file: File) => {
     try {
       setLoading(true);
+      setProgress(5);
       const msgs = await parseChatFile(file);
-      if (msgs.length === 0) {
-        alert("No messages found. Ensure it is a valid WhatsApp text export.");
+      if (!msgs.length) {
+        alert('No messages found.');
         setLoading(false);
         return;
       }
-      processMessages(msgs, true);
-    } catch (error) {
-      console.error(error);
-      alert("Error parsing file.");
+      processMessages(msgs);
+    } catch {
+      alert('Error parsing file.');
       setLoading(false);
     }
-  };
-
-  const loadDemo = () => {
-    const demoMsgs = generateDemoData();
-    processMessages(demoMsgs, false); 
   };
 
   const handleReset = () => {
@@ -138,88 +117,81 @@ const App: React.FC = () => {
     setAnalysis(null);
     setViewMode(ViewMode.UPLOAD);
     localStorage.removeItem('chatlens_messages');
+    setProgress(0);
   };
 
   const navigateTo = (mode: ViewMode) => {
     if (mode === ViewMode.UPLOAD) {
-        handleReset();
-        return;
+      handleReset();
+    } else {
+      setViewMode(mode);
     }
-    setViewMode(mode);
   };
 
+  /* -------------------------
+   * Loading screen
+   * ------------------------ */
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-whatsapp"></div>
-        <p className="mt-4 text-gray-600 dark:text-gray-300 font-medium">Crunching your chat data...</p>
+      <div className="min-h-screen bg-surface-light dark:bg-surface-dark flex flex-col items-center justify-center transition-colors">
+        <div className="relative w-24 h-24 mb-6">
+          <div className="absolute inset-0 border-4 border-whatsapp-brand/20 rounded-full"></div>
+          <div 
+            className="absolute inset-0 border-4 border-whatsapp-brand rounded-full animate-spin"
+            style={{ borderTopColor: 'transparent', clipPath: 'inset(0 0 50% 0)' }}
+          ></div>
+        </div>
+        <div className="w-64 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-4">
+          <div 
+            className="h-full bg-whatsapp-brand transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <p className="text-gray-600 dark:text-gray-300 font-medium">
+          Analyzing {messages.length > 0 ? messages.length : 'your'} messages... {progress}%
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 flex flex-col transition-colors duration-200">
+    <div className="min-h-screen bg-surface-light dark:bg-surface-dark flex flex-col transition-colors">
       {(viewMode === ViewMode.UPLOAD || viewMode === ViewMode.HOW_TO_USE) && (
-        <Header currentView={viewMode} onNavigate={navigateTo} theme={theme} onToggleTheme={toggleTheme} />
+        <Header
+          currentView={viewMode}
+          onNavigate={navigateTo}
+          isDark={isDark}
+          onToggleTheme={toggle} 
+          theme={isDark ? 'dark' : 'light'} />
       )}
 
       <main className="flex-grow">
         {viewMode === ViewMode.UPLOAD && (
           <>
-            <Hero onDemoLoad={loadDemo} />
-            <div className="py-12 bg-gray-50 dark:bg-gray-900 min-h-[400px]">
+            <Hero onDemoLoad={() => processMessages(generateDemoData(), false)} />
+            <section className="py-12 bg-muted-light dark:bg-muted-dark transition-colors">
               <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Ready to analyze?</h2>
                 <p className="text-gray-500 dark:text-gray-400">Upload your _chat.txt file below</p>
               </div>
               <FileUploader onFileUpload={handleFileUpload} />
-              
-              <div className="max-w-4xl mx-auto mt-20 px-4">
-                 <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-10">What Users Say</h2>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 italic text-gray-600 dark:text-gray-300">
-                      "This tool saved me hours digging through exported files for a specific legal date. Brilliant!"
-                      <div className="mt-4 text-sm font-bold text-gray-900 dark:text-white not-italic">— Sarah J., Lawyer</div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 italic text-gray-600 dark:text-gray-300">
-                      "As a researcher, I rely on this for analyzing WhatsApp interviews. Works like a charm and it's private."
-                      <div className="mt-4 text-sm font-bold text-gray-900 dark:text-white not-italic">— Academic User</div>
-                    </div>
-                 </div>
-              </div>
-
-              <div className="max-w-3xl mx-auto mt-16 px-4">
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center justify-center">
-                    <span className="mr-2">🔐</span> Privacy Info
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300 mb-4">
-                    Your chats are never uploaded. All processing happens locally in your browser. No data is stored or sent to any server.
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                    Note: This project is an independent tool and is not associated with WhatsApp or Meta in any way. All trademarks belong to their respective owners.
-                  </p>
-                </div>
-              </div>
-            </div>
+            </section>
           </>
         )}
 
-        {viewMode === ViewMode.HOW_TO_USE && (
-          <HowToUse onBack={() => navigateTo(ViewMode.UPLOAD)} />
-        )}
+        {viewMode === ViewMode.HOW_TO_USE && <HowToUse onBack={() => navigateTo(ViewMode.UPLOAD)} />}
 
         {viewMode === ViewMode.DASHBOARD && analysis && (
-          <ChatDashboard 
-            messages={messages} 
-            analysis={analysis} 
+          <ChatDashboard
+            messages={messages}
+            analysis={analysis}
             onReset={handleReset}
-            isDarkMode={theme === 'dark'}
-            onToggleTheme={toggleTheme}
+            isDarkMode={isDark}
+            onToggleTheme={toggle}
           />
         )}
       </main>
-      
+
       {(viewMode === ViewMode.UPLOAD || viewMode === ViewMode.HOW_TO_USE) && <Footer />}
     </div>
   );
