@@ -8,7 +8,7 @@ import { ViewMode } from '../types';
 export interface HeaderProps {
   currentView: ViewMode.UPLOAD | ViewMode.HOW_TO_USE;
   onNavigate: (mode: ViewMode) => void;
-  theme: "light" | "dark"; // Add this line
+  // Add this line theme: "light" | "dark"; // Add this line
   isDark: boolean; // Add this line
   onToggleTheme: () => void;
 }

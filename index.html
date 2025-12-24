@@ -5,43 +5,60 @@
 
     <title>ChatLens - WhatsApp Research</title>
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <link rel="icon" type="image/jpg" href="/logo.jpg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-     <meta name="author" content="Helmar Baechle" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
 
-     <meta name="description" content="Search and analyze WhatsApp chat exports instantly and privately." />
+    <link rel="icon" type="image/jpg" href="/logo.jpg" />
+
     <meta name="author" content="Helmar Baechle" />
+    <meta
+      name="description"
+      content="Search and analyze WhatsApp chat exports instantly and privately."
+    />
+
     <meta name="theme-color" content="#2563EB" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="" />
 
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Search and analyze WhatsApp chat exports instantly and privately." />
-    <meta property="og:description" content="Worldpopulation (live)" />
+    <meta
+      property="og:title"
+      content="Search and analyze WhatsApp chat exports instantly and privately."
+    />
     <meta property="og:image" content="https://whatsapp-research.web.app/people.jpg" />
     <meta property="og:url" content="https://pop2sync.web.app/" />
 
-    <meta name="twitter:card" content="summary_large_image" /> <meta name="twitter:title" content="World Population (live)" />
-    <meta name="twitter:description" content="Real-time world statistics at your fingertips" />
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://whatsapp-research.web.app/people.jpg" />
-    <meta name="twitter:url" content="https://whatsapp-research.web.app/" />
 
-    <!-- Manifest für PWA -->
+    <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
-    <!-- Tailwind Styles -->
+
+    <!-- Tailwind -->
     <link rel="stylesheet" href="/src/index.css" />
 
+    <!-- ✅ Dark mode hydration -->
+    <script>
+      if (
+        localStorage.theme === 'dark' ||
+        (!('theme' in localStorage) &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches)
+      ) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
 
-
-<!-- Preconnect to external resources -->
-    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
-    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-
-  
-     <!-- Google tag (gtag.js) - deferred -->
-    <script defer src="https://www.googletagmanager.com/gtag/js?id=G-TYC7CEQNKG"></script>
+    <!-- Google Analytics -->
+    <script
+      defer
+      src="https://www.googletagmanager.com/gtag/js?id=G-TYC7CEQNKG"
+    ></script>
     <script defer>
       window.dataLayer = window.dataLayer || [];
       function gtag() {
@@ -51,7 +68,8 @@
       gtag('config', 'G-NTRSXTJ8TJ');
     </script>
   </head>
-<body class="font-sans">
+
+  <body class="font-sans">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

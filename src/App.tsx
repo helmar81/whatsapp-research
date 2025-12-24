@@ -162,7 +162,7 @@ const App: React.FC = () => {
           onNavigate={navigateTo}
           isDark={isDark}
           onToggleTheme={toggle} 
-          theme={isDark ? 'dark' : 'light'} />
+        />
       )}
 
       <main className="flex-grow">
