@@ -7,191 +7,155 @@ import Header from './components/Header';
 import HowToUse from './components/HowToUse';
 import { parseChatFile, parseChatText, analyzeChat } from './services/chatParser';
 import { type Message, type ChatAnalysis, ViewMode } from './types';
-import { useDarkMode } from './hooks/useDarkMode';
 
-/* -------------------------
- * Demo data generator
- * ------------------------ */
 const generateDemoData = (): Message[] => {
   const text = `[12/05/2024, 09:15:00] Alice: Hey Bob, did you see the new project requirements?
 [12/05/2024, 09:16:20] Bob: Yes, I just read them. Looks like a lot of work for next week.
+[12/05/2024, 09:17:00] Alice: Totally. We need to start with the API design.
+[12/05/2024, 09:18:15] Charlie: I can handle the frontend components if you guys do the backend.
+[12/05/2024, 09:20:00] Bob: Sounds like a plan. @Alice, can you set up the repo?
+[12/05/2024, 10:00:00] Alice: Done. Sent the link.
+[12/05/2024, 10:05:00] Charlie: Thanks! I'll start the React setup.
+[12/05/2024, 14:30:00] Alice: Let's meet at 4 PM to sync?
+[12/05/2024, 14:31:00] Bob: Works for me.
+[13/05/2024, 09:00:00] System: Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.
+[13/05/2024, 09:05:00] Alice: Good morning team! How's progress?
+[13/05/2024, 09:10:00] Charlie: Almost done with the dashboard UI. It looks clean!
+[13/05/2024, 09:12:00] Bob: API endpoints are 50% done. I need to fix some database schemas.
+[13/05/2024, 09:15:00] Alice: Great. I'm working on the auth service. It's tricky with the new JWT requirements.
+[13/05/2024, 11:20:00] Bob: Anyone want to grab lunch?
+[13/05/2024, 11:21:00] Charlie: Sure, pizza place?
 [13/05/2024, 11:21:30] Alice: I'm in!`;
   return parseChatText(text);
 };
 
 const App: React.FC = () => {
-  const { isDark, toggle } = useDarkMode();
-
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.UPLOAD);
   const [messages, setMessages] = useState<Message[]>([]);
   const [analysis, setAnalysis] = useState<ChatAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
-  // Added progress state to give feedback during large file processing
-  const [progress, setProgress] = useState(0);
+  
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window === 'undefined') return 'light';
+    const saved = localStorage.getItem('chatlens_theme');
+    if (saved) return saved as 'light' | 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
 
-  /* -------------------------
-   * Load persisted chat
-   * ------------------------ */
   useEffect(() => {
-    const savedData = localStorage.getItem('chatlens_messages');
-    if (!savedData) return;
-
-    try {
-      setLoading(true);
-      setProgress(20);
-      setTimeout(() => {
-        const parsedMsgs: Message[] = JSON.parse(savedData, (k, v) =>
-          k === 'date' ? new Date(v) : v
-        );
-
-        if (parsedMsgs.length > 0) {
-          setMessages(parsedMsgs);
-          setAnalysis(analyzeChat(parsedMsgs));
-          setViewMode(ViewMode.DASHBOARD);
-        }
-        setLoading(false);
-      }, 300);
-    } catch (err) {
-      console.error('Failed to load saved chat:', err);
-      localStorage.removeItem('chatlens_messages');
-      setLoading(false);
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
     }
-  }, []);
+    localStorage.setItem('chatlens_theme', theme);
+  }, [theme]);
 
-  /* -------------------------
-   * Helpers
-   * ------------------------ */
-  const processMessages = (msgs: Message[], persist = true) => {
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
+  const processMessages = (msgs: Message[], persist: boolean = true) => {
     setLoading(true);
-    setProgress(10);
-
-    // Use setTimeout to allow the browser to update the UI before heavy processing starts
+    // Use a small delay for smoother transition
     setTimeout(() => {
-      try {
-        setMessages(msgs);
-        setProgress(40);
-        
-        const result = analyzeChat(msgs);
-        setAnalysis(result);
-        setProgress(70);
-        
-        setViewMode(ViewMode.DASHBOARD);
-
-        if (persist) {
-          const serialized = JSON.stringify(msgs);
-          // Only save to localStorage if chat is under 4MB to prevent quota crashes
-          if (serialized.length < 4000000) {
-            localStorage.setItem('chatlens_messages', serialized);
-          } else {
-            console.warn("Chat too large to save in browser memory. It will work for this session only.");
-          }
-        }
-        setProgress(100);
-      } catch (err) {
-        console.error("Processing error:", err);
-        alert("Something went wrong while analyzing the chat.");
+      const result = analyzeChat(msgs);
+      setMessages(msgs);
+      setAnalysis(result);
+      setViewMode(ViewMode.DASHBOARD);
+      if (persist) {
+        localStorage.setItem('chatlens_messages', JSON.stringify(msgs));
       }
       setLoading(false);
-    }, 100);
+    }, 400);
   };
 
   const handleFileUpload = async (file: File) => {
     try {
       setLoading(true);
-      setProgress(5);
       const msgs = await parseChatFile(file);
-      if (!msgs.length) {
-        alert('No messages found.');
+      if (msgs.length === 0) {
+        alert("No messages found. Please check if it's a valid WhatsApp text export.");
         setLoading(false);
         return;
       }
-      processMessages(msgs);
-    } catch {
-      alert('Error parsing file.');
+      processMessages(msgs, true);
+    } catch (error) {
+      console.error("Upload Error:", error);
+      alert("Error parsing file. Make sure it's a valid text file.");
       setLoading(false);
     }
   };
 
   const handleReset = () => {
-    setMessages([]);
-    setAnalysis(null);
-    setViewMode(ViewMode.UPLOAD);
-    localStorage.removeItem('chatlens_messages');
-    setProgress(0);
-  };
-
-  const navigateTo = (mode: ViewMode) => {
-    if (mode === ViewMode.UPLOAD) {
-      handleReset();
-    } else {
-      setViewMode(mode);
+    if (confirm("Clear current analysis and uploaded data?")) {
+      setMessages([]);
+      setAnalysis(null);
+      setViewMode(ViewMode.UPLOAD);
+      localStorage.removeItem('chatlens_messages');
     }
   };
 
-  /* -------------------------
-   * Loading screen
-   * ------------------------ */
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-surface-light dark:bg-surface-dark flex flex-col items-center justify-center transition-colors">
-        <div className="relative w-24 h-24 mb-6">
-          <div className="absolute inset-0 border-4 border-whatsapp-brand/20 rounded-full"></div>
-          <div 
-            className="absolute inset-0 border-4 border-whatsapp-brand rounded-full animate-spin"
-            style={{ borderTopColor: 'transparent', clipPath: 'inset(0 0 50% 0)' }}
-          ></div>
-        </div>
-        <div className="w-64 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-4">
-          <div 
-            className="h-full bg-whatsapp-brand transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <p className="text-gray-600 dark:text-gray-300 font-medium">
-          Analyzing {messages.length > 0 ? messages.length : 'your'} messages... {progress}%
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-surface-light dark:bg-surface-dark flex flex-col transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-whatsapp-chat-dark flex flex-col transition-colors duration-200">
       {(viewMode === ViewMode.UPLOAD || viewMode === ViewMode.HOW_TO_USE) && (
-        <Header
-          currentView={viewMode}
-          onNavigate={navigateTo}
-          isDark={isDark}
-          onToggleTheme={toggle} 
+        <Header 
+          currentView={viewMode} 
+          onNavigate={setViewMode} 
+          theme={theme} 
+          onToggleTheme={toggleTheme} 
         />
       )}
 
       <main className="flex-grow">
-        {viewMode === ViewMode.UPLOAD && (
-          <>
+        {loading && (
+          <div className="min-h-[400px] flex flex-col items-center justify-center">
+             <div className="relative">
+               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-whatsapp-brand"></div>
+               <div className="absolute inset-0 flex items-center justify-center">
+                 <div className="h-2 w-2 bg-whatsapp-brand rounded-full animate-ping"></div>
+               </div>
+             </div>
+             <p className="mt-4 text-gray-500 dark:text-gray-400 animate-pulse text-sm font-medium">Crunching your chat history...</p>
+          </div>
+        )}
+        
+        {!loading && viewMode === ViewMode.UPLOAD && (
+          <div className="animate-fadeIn">
             <Hero onDemoLoad={() => processMessages(generateDemoData(), false)} />
-            <section className="py-12 bg-muted-light dark:bg-muted-dark transition-colors">
+            <div className="py-12 bg-gray-50 dark:bg-whatsapp-chat-dark/50">
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Ready to analyze?</h2>
-                <p className="text-gray-500 dark:text-gray-400">Upload your _chat.txt file below</p>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Start your analysis</h2>
               </div>
               <FileUploader onFileUpload={handleFileUpload} />
-            </section>
-          </>
+              
+              <div className="max-w-xl mx-auto mt-12 px-6">
+                <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm text-center">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    🔒 <strong>Privacy First:</strong> Your chat data never leaves your device. All analytics happen locally in your browser.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
-        {viewMode === ViewMode.HOW_TO_USE && <HowToUse onBack={() => navigateTo(ViewMode.UPLOAD)} />}
+        {!loading && viewMode === ViewMode.HOW_TO_USE && (
+          <HowToUse onBack={() => setViewMode(ViewMode.UPLOAD)} />
+        )}
 
-        {viewMode === ViewMode.DASHBOARD && analysis && (
-          <ChatDashboard
-            messages={messages}
-            analysis={analysis}
+        {!loading && viewMode === ViewMode.DASHBOARD && analysis && (
+          <ChatDashboard 
+            messages={messages} 
+            analysis={analysis} 
             onReset={handleReset}
-            isDarkMode={isDark}
-            onToggleTheme={toggle}
+            isDarkMode={theme === 'dark'}
+            onToggleTheme={toggleTheme}
           />
         )}
       </main>
-
+      
       {(viewMode === ViewMode.UPLOAD || viewMode === ViewMode.HOW_TO_USE) && <Footer />}
     </div>
   );

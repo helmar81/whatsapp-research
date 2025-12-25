@@ -1,52 +1,37 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
-
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
+    "./*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
   ],
-
   theme: {
     extend: {
-      /* -------------------------
-       * Fonts
-       * ------------------------ */
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
-
-      /* -------------------------
-       * Semantic color system
-       * ------------------------ */
       colors: {
         whatsapp: {
           brand: '#25D366',
-          brandDark: '#075E54',
-          brandLight: '#DCF8C6',
-
-          /* Chat surfaces */
+          'brand-dark': '#075E54',
+          'brand-light': '#DCF8C6',
+          // WhatsApp Official Colors
           chat: {
             light: '#f0f2f5',
-            dark: '#0b141a',
+            dark: '#0b141a', // Official dark mode background
           },
-
-          /* Messages */
           message: {
-            inLight: '#ffffff',
-            outLight: '#DCF8C6',
-            inDark: '#202c33',
-            outDark: '#005c4b',
+            'in-light': '#ffffff',
+            'out-light': '#DCF8C6',
+            'in-dark': '#202c33', // Official received bubble
+            'out-dark': '#005c4b', // Official sent bubble
           },
-
-          /* UI */
           header: {
             light: '#ffffff',
             dark: '#202c33',
           },
         },
-
-        /* App-level semantic tokens */
         surface: {
           light: '#ffffff',
           dark: '#0b141a',
@@ -56,15 +41,24 @@ export default {
           dark: '#1f2933',
         },
       },
-
-      /* -------------------------
-       * Transitions & motion
-       * ------------------------ */
-      transitionProperty: {
-        colors: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+      screens: {
+        'xs': '475px',
       },
+      animation: {
+        'fadeIn': 'fadeIn 0.3s ease-out',
+        'highlight': 'highlight 2s ease-in-out infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        highlight: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.05)' },
+        }
+      }
     },
   },
-
   plugins: [],
 };
